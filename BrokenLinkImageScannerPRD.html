@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Broken Link & Image Scanner PRD</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.5;
+    }
+    h1, h2, h3, h4 {
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
+    ul, ol {
+      margin: 0 0 1em 1.5em;
+    }
+    li {
+      margin-bottom: 0.5em;
+    }
+    .section {
+      margin-bottom: 2em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Product Requirements Document (PRD)</h1>
+  <h2 class="section">Broken Link & Image Scanner</h2>
+
+  <div class="section">
+    <h3>1. Overview</h3>
+    <ul>
+      <li><strong>Product Name:</strong> Broken Link &amp; Image Scanner</li>
+      <li><strong>Primary Platform:</strong> Google Chrome (with plans to expand to Firefox and Edge)</li>
+      <li><strong>Purpose:</strong> Detect broken or dead links and missing images on WordPress pages (and potentially any website), helping users quickly identify and resolve SEO and user-experience issues.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h3>2. Objectives</h3>
+    <ol>
+      <li><strong>Identify Broken Links &amp; Images Quickly:</strong> Provide an easy-to-use tool that scans the current webpage for dead links (HTTP status 404, 403, etc.) and missing images.</li>
+      <li><strong>Optimize SEO &amp; User Experience:</strong> By detecting these issues, site owners or editors can correct problems and improve page rankings and user satisfaction.</li>
+      <li><strong>Extendibility &amp; Scalability:</strong> Allow for future expansions (e.g., deeper SEO checks, scanning multiple pages, export of reports, etc.) and cross-browser functionality.</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h3>3. Key Features</h3>
+    <ol>
+      <li><strong>Link Scanner:</strong>
+        <ul>
+          <li>Scans all <code>&lt;a&gt;</code> tags for their <code>href</code> attribute and tests for response codes.</li>
+          <li>Flags any link that returns an error (404, 403, 500, etc.).</li>
+          <li>Allows the user to see the broken links in a report or summary.</li>
+        </ul>
+      </li>
+      <li><strong>Image Scanner:</strong>
+        <ul>
+          <li>Scans all <code>&lt;img&gt;</code> tags for valid <code>src</code> attributes.</li>
+          <li>Checks if any images fail to load or return an HTTP error (e.g., 404).</li>
+          <li>Displays a list of all images that failed to load.</li>
+        </ul>
+      </li>
+      <li><strong>On-Page Report:</strong>
+        <ul>
+          <li>Summarizes all broken links and unloaded images in a popup or a side panel.</li>
+          <li>Shows the total count, plus specific URLs/paths causing errors.</li>
+        </ul>
+      </li>
+      <li><strong>User-Friendly Interface:</strong>
+        <ul>
+          <li>Includes a simple icon in the browser toolbar.</li>
+          <li>Clicking the icon opens a popup or dedicated page with results, including:
+            <ul>
+              <li>List of broken links</li>
+              <li>List of broken/unloaded images</li>
+              <li>Status codes</li>
+              <li>Suggestions for how to fix them</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><strong>Optional Detailed View / Export:</strong>
+        <ul>
+          <li>Allows the user to export the findings as a JSON or CSV file.</li>
+          <li>Includes the option to re-check selected items on demand.</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h3>4. Functional Requirements</h3>
+
+    <h4>4.1 Browser Extension Structure (Chrome, Manifest V3)</h4>
+    <ol>
+      <li><strong>Manifest File:</strong>
+        <ul>
+          <li>Permissions required: <code>activeTab</code>, <code>scripting</code>, possibly <code>storage</code>.</li>
+          <li>Uses the Manifest V3 format.</li>
+        </ul>
+      </li>
+      <li><strong>Background Service Worker (if needed):</strong>
+        <ul>
+          <li>Listens for messages from the content script to manage scanning results.</li>
+          <li>Performs any network requests that require background execution (if not handled directly in the content script).</li>
+        </ul>
+      </li>
+      <li><strong>Content Script:</strong>
+        <ul>
+          <li>Injected into the page to traverse the DOM and identify all links and images.</li>
+          <li>Sends requests to each link/image to verify its status code or checks if the image is loaded.</li>
+          <li>Passes data back to the service worker or directly to the extension’s popup script.</li>
+        </ul>
+      </li>
+      <li><strong>Popup (UI) / Extension Page:</strong>
+        <ul>
+          <li>Displays scanning results: number of total links, broken links &amp; their URLs, unloaded images &amp; their URLs.</li>
+          <li>Option to re-scan or export results.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h4>4.2 Core Scanning Logic</h4>
+    <ol>
+      <li><strong>DOM Parsing:</strong>
+        <ul>
+          <li>Script finds all <code>&lt;a&gt;</code> and <code>&lt;img&gt;</code> tags on the active page.</li>
+          <li>Collects their URLs (<code>href</code> or <code>src</code>).</li>
+        </ul>
+      </li>
+      <li><strong>HTTP Status Checks:</strong>
+        <ul>
+          <li>For each link/image, perform a <code>fetch</code> request to see if the response is valid (status &lt; 400).</li>
+          <li>For images, check the load event or do the same <code>fetch</code> approach.</li>
+          <li>Store the results in an array of “valid” vs. “broken” items.</li>
+        </ul>
+      </li>
+      <li><strong>Reporting:</strong>
+        <ul>
+          <li>Return the array of broken link/image data (URL, status code, short description of the issue).</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h4>4.3 User Interaction / UI Flows</h4>
+    <ol>
+      <li><strong>Extension Icon Clicked:</strong>
+        <ul>
+          <li>Inject or trigger the scan on the current tab, if not already scanned.</li>
+          <li>Show a popup or new tab with a quick summary of results.</li>
+        </ul>
+      </li>
+      <li><strong>View Detailed Report:</strong>
+        <ul>
+          <li>If user wants more info, allow either a clickable item in the popup that expands a list of all issues, or a link to an options page with full details.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h4>4.4 Performance &amp; Constraints</h4>
+    <ul>
+      <li>The extension must handle pages with many links without hanging or crashing.</li>
+      <li>Must manage asynchronous requests efficiently (e.g., using promises, concurrency limits).</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h3>5. Non-Functional Requirements</h3>
+    <ol>
+      <li><strong>Performance:</strong>
+        <ul>
+          <li>Scanning should complete within a few seconds for typical pages (&lt; 500 links).</li>
+          <li>For larger pages, handle concurrency gracefully and possibly show a progress indicator.</li>
+        </ul>
+      </li>
+      <li><strong>User Experience:</strong>
+        <ul>
+          <li>Minimal clicks needed to scan the page.</li>
+          <li>Clear, concise reporting of issues.</li>
+          <li>No cluttered UI or extraneous features in the initial version.</li>
+        </ul>
+      </li>
+      <li><strong>Security &amp; Privacy:</strong>
+        <ul>
+          <li>Only request permissions strictly needed for scanning links/images.</li>
+          <li>Adhere to browser extension security guidelines (Manifest V3 policies).</li>
+        </ul>
+      </li>
+      <li><strong>Compatibility:</strong>
+        <ul>
+          <li>Primary focus on Chrome first.</li>
+          <li>Architecture that can be ported to Firefox (using <code>browser</code> APIs or polyfills) and Microsoft Edge with minimal changes.</li>
+        </ul>
+      </li>
+      <li><strong>Scalability:</strong>
+        <ul>
+          <li>Codebase structured in a way to easily add features like scanning multiple pages or entire sites later.</li>
+          <li>Potential for centralized logging if the user chooses to link an account in the future.</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h3>6. Technical Approach</h3>
+    <ol>
+      <li><strong>Manifest V3-based Implementation:</strong>
+        <ul>
+          <li>Use a service worker instead of a background page.</li>
+          <li><code>scripting</code> API to inject content scripts.</li>
+        </ul>
+      </li>
+      <li><strong>Content Script Implementation:</strong>
+        <ul>
+          <li>Query DOM for <code>&lt;a&gt;</code> and <code>&lt;img&gt;</code> tags.</li>
+          <li>Use <code>fetch</code> to confirm link validity.</li>
+          <li>Check load events for images or do parallel <code>fetch</code> checks.</li>
+        </ul>
+      </li>
+      <li><strong>Data Storage:</strong>
+        <ul>
+          <li>In the initial version, results can be displayed immediately without storage.</li>
+          <li>Optionally store in <code>chrome.storage.local</code> for future reference.</li>
+        </ul>
+      </li>
+      <li><strong>UI / Popup:</strong>
+        <ul>
+          <li>Built with HTML, CSS, JavaScript (or a lightweight framework if desired).</li>
+          <li>Real-time updates from the content script via message passing.</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h3>7. User Flow Diagram (High-Level)</h3>
+    <ol>
+      <li>User clicks extension icon.</li>
+      <li>Extension injects or runs content script.</li>
+      <li>Script scans the DOM.</li>
+      <li>Script returns data to the extension.</li>
+      <li>Extension displays summary in popup.</li>
+      <li>User can expand details or export results.</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h3>8. Project Milestones &amp; Timeline</h3>
+    <ol>
+      <li><strong>Milestone 1: Basic Scanning Logic (2-3 days)</strong>
+        <ul>
+          <li>Implement content script to find links/images and fetch status codes.</li>
+          <li>Console-log results for broken links/images.</li>
+        </ul>
+      </li>
+      <li><strong>Milestone 2: UI &amp; Reporting (3-5 days)</strong>
+        <ul>
+          <li>Create extension popup interface.</li>
+          <li>Display broken link/image data in a readable list.</li>
+        </ul>
+      </li>
+      <li><strong>Milestone 3: Polishing &amp; Testing (1-2 weeks)</strong>
+        <ul>
+          <li>Test across multiple websites, including WordPress-based and non-WordPress-based.</li>
+          <li>Optimize performance for large pages.</li>
+          <li>Handle edge cases (e.g., relative links, JavaScript-based links).</li>
+        </ul>
+      </li>
+      <li><strong>Milestone 4: Manifest V3 Packaging &amp; Deployment (1 week)</strong>
+        <ul>
+          <li>Prepare final extension package for Chrome Web Store submission.</li>
+          <li>Complete any required compliance (privacy policy, etc.).</li>
+        </ul>
+      </li>
+      <li><strong>Future Milestones (beyond initial release):</strong>
+        <ul>
+          <li><strong>Firefox / Edge Port:</strong> Adapt manifest if necessary.</li>
+          <li><strong>Mobile App:</strong> Investigate feasibility with a separate codebase or frameworks like React Native.</li>
+          <li><strong>Additional SEO Features:</strong> Extend scanning to check meta tags, page speed metrics, etc.</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h3>9. Risks &amp; Dependencies</h3>
+    <ul>
+      <li><strong>Changing Web Standards:</strong> Ongoing changes to Chrome extension API (Manifest V3).</li>
+      <li><strong>Cross-Browser Inconsistencies:</strong> Different extension APIs for Firefox and Edge.</li>
+      <li><strong>Network Restrictions:</strong> Some sites may block requests or yield inconsistent status codes if scanning is too aggressive.</li>
+      <li><strong>Performance on Very Large Pages:</strong> Need efficient queueing of fetch requests to avoid browser freezing.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h3>10. Acceptance Criteria</h3>
+    <ul>
+      <li><strong>Core Features Work:</strong> Scans current active tab, identifies broken links/images.</li>
+      <li><strong>Clear Reporting:</strong> Summarizes results in a well-formatted UI.</li>
+      <li><strong>Performance:</strong> Completes scanning within a reasonable time on typical sites.</li>
+      <li><strong>Stable Behavior:</strong> No crashes, memory leaks, or major UI bugs during usage.</li>
+      <li><strong>Manifest V3 Compliance:</strong> Successfully published (or ready to publish) in the Chrome Web Store.</li>
+    </ul>
+  </div>
+
+  <hr />
+  <p><em>End of PRD — Broken Link &amp; Image Scanner</em></p>
+
+</body>
+</html>

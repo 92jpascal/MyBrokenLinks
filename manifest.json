@@ -1,0 +1,19 @@
+{
+    "manifest_version": 3,
+    "name": "Broken Link & Image Scanner",
+    "version": "1.0.0",
+    "description": "Detect broken links and missing images on web pages",
+    "permissions": ["activeTab", "scripting"],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["contentScript.js"]
+        }
+    ]
+}
