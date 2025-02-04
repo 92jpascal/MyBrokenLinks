@@ -1,12 +1,29 @@
 {
-    "manifest_version": 3,
-    "name": "Broken Link & Image Scanner",
+    "name": "Link & Image Health Scanner",
     "version": "1.0.0",
-    "description": "Detect broken links and missing images on web pages",
-    "permissions": ["activeTab", "scripting"],
-    "action": {
-        "default_popup": "popup.html"
+    "manifest_version": 3,
+    "description": "Scan web pages for broken links and images",
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
     },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
     "background": {
         "service_worker": "background.js"
     },

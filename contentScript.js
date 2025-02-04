@@ -201,21 +201,113 @@ const scanner = new LinkScanner();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'scan') {
-    scanner.scanPage()
-      .then(results => {
-        chrome.runtime.sendMessage({
-          action: 'scanComplete',
-          results: results
-        });
-      })
-      .catch(error => {
-        chrome.runtime.sendMessage({
-          action: 'scanError',
-          error: error.message
-        });
-      });
+    scanPage();
   } else if (request.action === 'abort') {
     scanner.abort();
   }
   return false; // Don't keep message channel open
-}); 
+});
+
+async function scanPage() {
+  const links = Array.from(document.getElementsByTagName('a'));
+  const images = Array.from(document.getElementsByTagName('img'));
+  
+  const results = {
+    brokenLinks: [],
+    brokenImages: [],
+    totalLinks: links.length,
+    totalImages: images.length
+  };
+
+  let scannedLinks = 0;
+  let scannedImages = 0;
+
+  // Check links in batches
+  const batchSize = 5;
+  for (let i = 0; i < links.length; i += batchSize) {
+    const batch = links.slice(i, i + batchSize);
+    await Promise.allSettled(batch.map(async (link) => {
+      try {
+        const url = link.href;
+        if (!url || url.startsWith('javascript:') || url.startsWith('#') || url.startsWith('mailto:')) {
+          return;
+        }
+
+        const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+        if (!response.ok) {
+          results.brokenLinks.push({
+            url: url,
+            text: link.textContent.trim(),
+            statusCode: response.status
+          });
+        }
+      } catch (error) {
+        results.brokenLinks.push({
+          url: link.href,
+          text: link.textContent.trim(),
+          error: error.message
+        });
+      }
+      scannedLinks++;
+      chrome.runtime.sendMessage({
+        action: 'scanProgress',
+        progress: {
+          links: scannedLinks,
+          images: scannedImages,
+          totalLinks: links.length,
+          totalImages: images.length
+        }
+      });
+    }));
+    
+    // Small delay between batches
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  // Check images in batches
+  for (let i = 0; i < images.length; i += batchSize) {
+    const batch = images.slice(i, i + batchSize);
+    await Promise.allSettled(batch.map(async (img) => {
+      try {
+        const url = img.src;
+        if (!url || url.startsWith('data:')) {
+          return;
+        }
+
+        const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+        if (!response.ok) {
+          results.brokenImages.push({
+            url: url,
+            alt: img.alt,
+            statusCode: response.status
+          });
+        }
+      } catch (error) {
+        results.brokenImages.push({
+          url: img.src,
+          alt: img.alt,
+          error: error.message
+        });
+      }
+      scannedImages++;
+      chrome.runtime.sendMessage({
+        action: 'scanProgress',
+        progress: {
+          links: scannedLinks,
+          images: scannedImages,
+          totalLinks: links.length,
+          totalImages: images.length
+        }
+      });
+    }));
+    
+    // Small delay between batches
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  // Send final results
+  chrome.runtime.sendMessage({
+    action: 'scanComplete',
+    results: results
+  });
+} 
